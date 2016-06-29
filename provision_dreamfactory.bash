@@ -19,7 +19,8 @@ install_packages epel-release
 install_packages ansible
 
 cd /vagrant/playbooks
-rm -rf /etc/ansible/roles/mcenirm.postgresql94-server
+rm -rf /etc/ansible/roles/mcenirm.{postgresql94-server,php70}
 ansible-galaxy install mcenirm.postgresql94-server,v0.1.2
+ansible-galaxy install mcenirm.php70,v0.1.4
 ansible-playbook --syntax-check deploy_dreamfactory.yml
 ansible-playbook -v -e 'dist_dir=/vagrant/dist' deploy_dreamfactory.yml
