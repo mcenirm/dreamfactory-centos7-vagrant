@@ -5,8 +5,20 @@
     - role: mcenirm.php70
 
 - hosts: local
+  tasks:
+    - name: "Install more packages"
+      with_items:
+        - "php70-php-mbstring"
+        - "php70-php-xml"
+        - "php70-php-zip"
+      yum:
+        name: "{{ item }}"
+        state: present
+
+- hosts: local
   vars:
     df_version: "2.2.0"
+    composer_version: "1.1.3"
   tasks:
     - name: "Download (pre)"
       with_items: []
@@ -18,7 +30,38 @@
         - url: "{{ 'https://github.com/dreamfactorysoftware/dreamfactory/archive/' ~ df_version ~ '.tar.gz' }}"
           file: "{{ 'dreamfactory-' ~ df_version ~ '.tar.gz' }}"
           sha256: "d0a02bb63447aea71ced9274335fec65346c0a4e9e51c4adcb16e4a204b551cc"
+        - url: "{{ 'https://getcomposer.org/download/' ~ composer_version ~ '/composer.phar' }}"
+          sha256: "4349ef555c8478b8fe148b10957bc40d696ce7b8cdeb7d50d3d684a854dca5cc"
       get_url:
         checksum: "{{ 'sha256:' ~ item.sha256 | default(omit) }}"
         dest: "{{ dist_dir ~ '/' ~ (item.file | default(item.url | basename)) }}"
         url: "{{ item.url }}"
+
+- hosts: local
+  become: true
+  become_user: "{{ df_user }}"
+  vars:
+    df_version: "2.2.0"
+    composer_version: "1.1.3"
+  tasks:
+    - name: "Prepare composer installation directory"
+      file:
+        path: "{{ df_install_dir ~ '/bin' }}"
+        state: directory
+    - name: "Install composer"
+      copy:
+        src: "{{ dist_dir ~ '/composer.phar' }}"
+        dest: "{{ df_install_dir ~ '/bin/composer' }}"
+        mode: "0755"
+    - name: "Extract DreamFactory archive"
+      unarchive:
+        src: "{{ dist_dir ~ '/dreamfactory-' ~ df_version ~ '.tar.gz' }}"
+        dest: "{{ df_install_dir }}"
+    - name: "Composer commands"
+      with_items:
+        - "remove --no-update dreamfactory/df-mongodb"
+        - "update --no-dev"
+        - "install --no-dev"
+      command: "{{ 'scl enable php70 -- ' ~ df_install_dir ~ '/bin/composer ' ~ item }}"
+      args:
+        chdir: "{{ df_install_dir ~ '/dreamfactory-' ~ df_version }}"
